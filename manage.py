@@ -2,6 +2,14 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
+from pathlib import Path
+
+# Make `project` package importable so `geotag` can be imported when
+# running manage.py from the repository root.
+BASE_DIR = Path(__file__).resolve().parent
+project_path = str(BASE_DIR / "project")
+if project_path not in sys.path:
+    sys.path.insert(0, project_path)
 
 
 def main():
