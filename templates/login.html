@@ -1,100 +1,240 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-
-<title>GeoTag Login</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoTag - Login</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="{% static 'css/custom.css' %}">
+    
+    <style>
+        .split-container {
+            min-height: 100vh;
+        }
+        .left-panel {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.95) 0%, rgba(79, 70, 229, 0.95) 100%), 
+                        url('https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&w=1000&q=80');
+            background-size: cover;
+            background-position: center;
+            background-blend-mode: multiply;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            color: white;
+            padding: 4rem;
+        }
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 4rem;
+        }
+        @media (max-width: 991.98px) {
+            .left-panel {
+                padding: 2rem;
+                min-height: 35vh;
+            }
+            .right-panel {
+                padding: 2rem;
+            }
+        }
+    </style>
 </head>
+<body>
 
-<body class="bg-light">
+<div class="container-fluid p-0">
+    <div class="row g-0 split-container">
+        <!-- Left Panel: Brand & Info -->
+        <div class="col-lg-6 left-panel">
+            <div class="mb-5">
+                <h1 class="display-4 fw-extrabold mb-3">
+                    <i class="bi bi-geo-alt-fill me-2"></i>GeoTag
+                </h1>
+                <p class="fs-5 text-white-50">Empowering Citizens. Improving Communities.</p>
+            </div>
+            
+            <div class="mt-4">
+                <div class="d-flex align-items-start mb-4">
+                    <div class="bg-white bg-opacity-10 p-3 rounded-3 me-3">
+                        <i class="bi bi-pin-map-fill fs-4 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Pinpoint Location</h5>
+                        <p class="text-white-50 mb-0">Lodge complaints with exact GPS coordinates and Leaflet interactive map mapping.</p>
+                    </div>
+                </div>
+                
+                <div class="d-flex align-items-start mb-4">
+                    <div class="bg-white bg-opacity-10 p-3 rounded-3 me-3">
+                        <i class="bi bi-image-fill fs-4 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Photo Evidence</h5>
+                        <p class="text-white-50 mb-0">Upload photos of the reported issues to help municipal teams act quickly.</p>
+                    </div>
+                </div>
 
+                <div class="d-flex align-items-start">
+                    <div class="bg-white bg-opacity-10 p-3 rounded-3 me-3">
+                        <i class="bi bi-bell-fill fs-4 text-white"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Real-time Tracking</h5>
+                        <p class="text-white-50 mb-0">Monitor the progress of your complaints from pending to fully resolved.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Panel: Login Form -->
+        <div class="col-lg-6 right-panel">
+            <div class="w-100 mx-auto" style="max-width: 440px;">
+                <div class="mb-4">
+                    <h2 class="fw-bold text-white mb-2" id="loginTitle">Welcome Back</h2>
+                    <p class="text-secondary" id="loginSubtitle">Sign in to report issues or check updates</p>
+                </div>
 
-<div class="container mt-5">
+                <!-- Display Errors if Views pass them -->
+                {% if error %}
+                    <div class="alert alert-danger border-0 mb-4" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}
+                    </div>
+                {% endif %}
 
-  
-<div class="row justify-content-center">
+                <!-- Base messages from Django framework -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-danger border-0 mb-4" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
 
-<div class="col-md-4">
+                <div class="glass-card p-4">
+                    <!-- Portal Switcher Tab -->
+                    <div class="d-flex justify-content-center mb-4 p-1 bg-dark bg-opacity-50 rounded-3 border border-light border-opacity-5">
+                        <button type="button" id="btnCitizenPortal" class="btn btn-sm text-white w-50 py-1.5 rounded-2 fw-semibold bg-white bg-opacity-10" onclick="switchPortal('citizen')">
+                            Citizen Portal
+                        </button>
+                        <button type="button" id="btnAdminPortal" class="btn btn-sm text-secondary w-50 py-1.5 rounded-2 fw-semibold" onclick="switchPortal('admin')">
+                            Admin Portal
+                        </button>
+                    </div>
 
-
-<div class="card shadow">
-
-
-<div class="card-header bg-primary text-white text-center">
-
-<h3>GeoTag Complaint System</h3>
-
+                    <form method="POST" action="{% url 'user_login' %}" id="loginForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="portal" id="portalInput" value="{% if portal %}{{ portal }}{% else %}citizen{% endif %}">
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-medium">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0 border-color" style="border: 1px solid var(--border-color); color: var(--text-secondary);">
+                                    <i class="bi bi-person"></i>
+                                </span>
+                                <input class="form-control border-start-0"
+                                       name="username"
+                                       placeholder="Enter your username"
+                                       required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label text-secondary small fw-medium">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0 border-color" style="border: 1px solid var(--border-color); color: var(--text-secondary);">
+                                    <i class="bi bi-lock"></i>
+                                </span>
+                                <input class="form-control border-start-0"
+                                       type="password"
+                                       name="password"
+                                       placeholder="Enter your password"
+                                       required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" id="submitBtn" class="btn btn-primary-custom w-100 mb-3 py-2">
+                            Sign In
+                        </button>
+                    </form>
+                    
+                    <div class="text-center mt-3" id="registerFooter">
+                        <span class="text-secondary small">Don't have an account? </span>
+                        <a href="{% url 'register' %}" class="text-indigo small fw-bold text-decoration-none">
+                            Register Here
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<div class="card-body">
-
-
-{% for message in messages %}
-
-<div class="alert alert-danger">
-
-{{message}}
-
-</div>
-
-{% endfor %}
-
-
-
-<form method="POST" action="{% url 'user_login' %}">
-
-{% csrf_token %}
-
-
-<input class="form-control mb-3"
-name="username"
-placeholder="Username"
-required>
-
-
-<input class="form-control mb-3"
-type="password"
-name="password"
-placeholder="Password"
-required>
-
-
-<button class="btn btn-primary w-100">
-
-Login
-
-</button>
-
-
-</form>
-
-
-<hr>
-
-
-<a href="{% url 'register' %}"
-class="btn btn-success w-100">
-
-Create Account
-
-</a>
-
-
-</div>
-
-
-</div>
-
-
-</div>
-
-</div>
-
-</div>
-
-
+<script>
+    function switchPortal(type) {
+        const citizenBtn = document.getElementById('btnCitizenPortal');
+        const adminBtn = document.getElementById('btnAdminPortal');
+        const title = document.getElementById('loginTitle');
+        const subtitle = document.getElementById('loginSubtitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const registerFooter = document.getElementById('registerFooter');
+        const portalInput = document.getElementById('portalInput');
+        
+        if (portalInput) {
+            portalInput.value = type;
+        }
+        
+        if (type === 'admin') {
+            citizenBtn.classList.remove('bg-white', 'bg-opacity-10', 'text-white');
+            citizenBtn.classList.add('text-secondary');
+            
+            adminBtn.classList.add('bg-white', 'bg-opacity-10', 'text-white');
+            adminBtn.classList.remove('text-secondary');
+            
+            title.innerText = "Admin Console Login";
+            subtitle.innerText = "Sign in with your administrative credentials to manage tickets";
+            submitBtn.innerText = "Enter Admin Workspace";
+            
+            // Apply admin color theme overrides inline (red/crimson colors)
+            submitBtn.style.setProperty('background-color', '#ef4444', 'important');
+            submitBtn.style.setProperty('box-shadow', '0 4px 12px rgba(239, 68, 68, 0.25)', 'important');
+            
+            if (registerFooter) registerFooter.style.display = 'none';
+        } else {
+            adminBtn.classList.remove('bg-white', 'bg-opacity-10', 'text-white');
+            adminBtn.classList.add('text-secondary');
+            
+            citizenBtn.classList.add('bg-white', 'bg-opacity-10', 'text-white');
+            citizenBtn.classList.remove('text-secondary');
+            
+            title.innerText = "Welcome Back";
+            subtitle.innerText = "Sign in to report issues or check updates";
+            submitBtn.innerText = "Sign In";
+            
+            // Revert back to variables
+            submitBtn.style.removeProperty('background-color');
+            submitBtn.style.removeProperty('box-shadow');
+            
+            if (registerFooter) registerFooter.style.display = 'block';
+        }
+    }
+    
+    // Auto toggle to Admin tab if validation redirected back from admin portal
+    {% if portal == 'admin' %}
+    document.addEventListener("DOMContentLoaded", function() {
+        switchPortal('admin');
+    });
+    {% endif %}
+</script>
 </body>
 </html>

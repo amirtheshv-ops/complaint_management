@@ -42,6 +42,7 @@ def login_page(request):
     if request.method == "POST":
         username = request.POST['username']
         password = request.POST['password']
+        portal = request.POST.get('portal', 'citizen')
 
         user = authenticate(
             request,
@@ -50,11 +51,19 @@ def login_page(request):
         )
 
         if user is not None:
+            if portal == 'admin' and not (user.is_staff or user.is_superuser):
+                return render(request, 'login.html', {
+                    'error': 'This account does not have administrator privileges.',
+                    'portal': 'admin'
+                })
             login(request, user)
+            if user.is_staff or user.is_superuser:
+                return redirect('admin_dashboard')
             return redirect('dashboard')
         else:
             return render(request, 'login.html', {
-                'error': 'Invalid username or password'
+                'error': 'Invalid username or password',
+                'portal': portal
             })
 
     return render(request, 'login.html')
@@ -64,6 +73,7 @@ def user_login(request):
     if request.method == "POST":
         username = request.POST['username']
         password = request.POST['password']
+        portal = request.POST.get('portal', 'citizen')
 
         user = authenticate(
             request,
@@ -72,11 +82,19 @@ def user_login(request):
         )
 
         if user is not None:
+            if portal == 'admin' and not (user.is_staff or user.is_superuser):
+                return render(request, 'login.html', {
+                    'error': 'This account does not have administrator privileges.',
+                    'portal': 'admin'
+                })
             login(request, user)
+            if user.is_staff or user.is_superuser:
+                return redirect('admin_dashboard')
             return redirect('dashboard')
         else:
             return render(request, 'login.html', {
-                'error': 'Invalid username or password'
+                'error': 'Invalid username or password',
+                'portal': portal
             })
 
     return render(request, 'login.html')
@@ -89,6 +107,8 @@ def user_logout(request):
 
 @login_required
 def dashboard(request):
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect('admin_dashboard')
     complaints = Complaint.objects.filter(user=request.user)
     return render(request, 'dashboard.html', {
         'complaints': complaints
@@ -98,6 +118,7 @@ def dashboard(request):
 def logout_page(request):
     logout(request)
     return redirect('login')
+
 
 
 @login_required
@@ -155,6 +176,8 @@ def complaint_map(request):
 
 @login_required
 def admin_dashboard(request):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect('dashboard')
     complaints = Complaint.objects.all()
     return render(request, 'admin_dashboard.html', {
         'complaints': complaints
@@ -163,6 +186,8 @@ def admin_dashboard(request):
 
 @login_required
 def update_status(request, id):
+    if not (request.user.is_staff or request.user.is_superuser):
+        return redirect('dashboard')
     if request.method == "POST":
         status = request.POST.get('status')
         complaint = Complaint.objects.get(id=id)
@@ -173,4 +198,4 @@ def update_status(request, id):
     complaint = Complaint.objects.get(id=id)
     return render(request, 'update_status.html', {
         'complaint': complaint
-    })
+    })

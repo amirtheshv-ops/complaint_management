@@ -78,7 +78,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'geotag',
         'USER': 'root',
-        'PASSWORD': 'dell123',
+        'PASSWORD': 'kaaviya_shree_2507',
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -120,6 +120,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+
 
 # Media files (user uploaded files)
 MEDIA_URL = '/media/'

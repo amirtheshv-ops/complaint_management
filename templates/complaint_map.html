@@ -1,84 +1,260 @@
-<!DOCTYPE html>
-<html>
+{% extends 'base.html' %}
+{% load static %}
 
-<head>
+{% block title %}Complaint Map{% endblock %}
 
-<title>Complaint Map</title>
-
-
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet/dist/leaflet.css">
-
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-
+{% block styles %}
 <style>
-
-#map{
-
-height:600px;
-
-}
-
+    .map-dashboard {
+        height: calc(100vh - 110px);
+        min-height: 550px;
+    }
+    .filter-panel {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border-color);
+        border-radius: 16px 0 0 16px;
+        box-shadow: var(--card-shadow);
+        overflow-y: auto;
+    }
+    .map-panel {
+        border-radius: 0 16px 16px 0;
+        border: 1px solid var(--border-color);
+        border-left: none;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+    }
+    .complaint-item {
+        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .complaint-item:hover {
+        background: rgba(15, 23, 42, 0.7);
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    @media (max-width: 991.98px) {
+        .map-dashboard {
+            height: auto;
+        }
+        .filter-panel {
+            border-radius: 16px 16px 0 0;
+            max-height: 350px;
+        }
+        .map-panel {
+            border-radius: 0 0 16px 16px;
+            border-left: 1px solid var(--border-color);
+            border-top: none;
+            height: 400px;
+        }
+    }
 </style>
+{% endblock %}
 
+{% block content %}
+<div class="row g-0 map-dashboard">
+    <!-- Filters & Complaints Sidebar -->
+    <div class="col-lg-4 filter-panel p-4 d-flex flex-column">
+        <div class="mb-4">
+            <h4 class="fw-bold text-white mb-2"><i class="bi bi-map me-2 text-indigo"></i>Interactive Map</h4>
+            <p class="text-secondary small mb-0">Explore civic reports mapped across your municipality.</p>
+        </div>
 
-</head>
+        <!-- Search and Filters Form -->
+        <div class="mb-3">
+            <div class="input-group mb-2">
+                <span class="input-group-text bg-dark border-color border-end-0 text-secondary" style="border: 1px solid var(--border-color);">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Search by title..." oninput="applyFilters()">
+            </div>
+            
+            <div class="row g-2">
+                <div class="col-6">
+                    <select class="form-select form-select-sm" id="categoryFilter" onchange="applyFilters()">
+                        <option value="">All Categories</option>
+                        <option value="Garbage">Garbage</option>
+                        <option value="Road Damage">Road Damage</option>
+                        <option value="Water Leakage">Water Leakage</option>
+                        <option value="Street Light">Street Light</option>
+                        <option value="Drainage">Drainage</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <select class="form-select form-select-sm" id="statusFilter" onchange="applyFilters()">
+                        <option value="">All Statuses</option>
+                        <option value="Pending">Pending</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                    </select>
+                </div>
+            </div>
+        </div>
 
+        <!-- Scrollable complaint cards list -->
+        <div class="flex-grow-1 overflow-y-auto pe-1" id="complaintsList" style="max-height: 450px;">
+            <!-- Rendered dynamically via JS -->
+        </div>
+    </div>
 
-<body>
+    <!-- Map View Area -->
+    <div class="col-lg-8 map-panel position-relative">
+        <div id="map" style="width: 100%; height: 100%; min-height: 450px;"></div>
+    </div>
+</div>
+{% endblock %}
 
-
-<h2>Complaint Map</h2>
-
-
-<div id="map"></div>
-
-
-
+{% block scripts %}
 <script>
+    let map;
+    let markersLayer = L.layerGroup();
+    let rawComplaints = [];
+    let filteredComplaints = [];
 
+    document.addEventListener("DOMContentLoaded", function() {
+        // Load data passed from Django views safely (as JSON string)
+        try {
+            rawComplaints = JSON.parse('{{ complaints|safe }}');
+        } catch (e) {
+            console.error("Error parsing complaints JSON:", e);
+            rawComplaints = [];
+        }
+        
+        filteredComplaints = [...rawComplaints];
 
-var map=L.map('map').setView(
-[13.0827,80.2707],
-12
-);
+        // Initialize map
+        map = L.map('map', {
+            zoomControl: true,
+            attributionControl: false
+        }).setView([13.0827, 80.2707], 12); // Chennai coordinates
+        
+        // Add dark map tiles
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(map);
 
+        markersLayer.addTo(map);
 
+        // Initial render
+        renderMapMarkers();
+        renderComplaintsList();
+    });
 
-L.tileLayer(
-'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-).addTo(map);
+    function getStatusColor(status) {
+        if (status === 'Pending') return '#f59e0b'; // Amber
+        if (status === 'In Progress') return '#06b6d4'; // Cyan
+        return '#10b981'; // Emerald
+    }
 
+    function renderMapMarkers() {
+        markersLayer.clearLayers();
+        
+        if (filteredComplaints.length === 0) return;
 
+        let bounds = [];
 
-{% for c in complaints %}
+        filteredComplaints.forEach(c => {
+            const lat = parseFloat(c.latitude);
+            const lng = parseFloat(c.longitude);
+            
+            if (isNaN(lat) || isNaN(lng)) return;
 
+            const color = getStatusColor(c.status);
+            
+            // Custom circle marker
+            const marker = L.circleMarker([lat, lng], {
+                radius: 9,
+                fillColor: color,
+                color: '#ffffff',
+                weight: 1.5,
+                fillOpacity: 0.95
+            });
 
-L.marker(
-[
-{{c.latitude}},
-{{c.longitude}}
-]
+            // Create popup HTML
+            const popupHtml = `
+                <div style="min-width: 180px;">
+                    <h6 class="text-white fw-bold mb-1">${c.title}</h6>
+                    <div class="mb-2">
+                        <span class="badge bg-secondary bg-opacity-30 text-white py-0.5 px-2 rounded-2 small">${c.category}</span>
+                    </div>
+                    <p class="text-secondary small mb-0">Status: <strong style="color: ${color};">${c.status}</strong></p>
+                </div>
+            `;
+            
+            marker.bindPopup(popupHtml);
+            
+            // Store reference to marker on the object to open on click from sidebar
+            c._marker = marker;
+            
+            markersLayer.addLayer(marker);
+            bounds.push([lat, lng]);
+        });
 
-)
+        // Fit map bounds if markers exist
+        if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }
 
-.addTo(map)
+    function renderComplaintsList() {
+        const container = document.getElementById('complaintsList');
+        container.innerHTML = '';
 
-.bindPopup(
+        if (filteredComplaints.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5 text-secondary">
+                    <i class="bi bi-geo-fill fs-2 mb-2 d-block"></i>
+                    <span>No complaints match your filters</span>
+                </div>
+            `;
+            return;
+        }
 
-"{{c.title}}<br>{{c.status}}"
+        filteredComplaints.forEach(c => {
+            const color = getStatusColor(c.status);
+            const card = document.createElement('div');
+            card.className = 'complaint-item p-3 mb-2';
+            card.innerHTML = `
+                <div class="d-flex align-items-center justify-content-between mb-1.5">
+                    <span class="badge bg-secondary bg-opacity-20 text-light small px-2 py-0.5 rounded-3">${c.category}</span>
+                    <span class="small fw-semibold" style="color: ${color}; font-size: 0.75rem;"><i class="bi bi-circle-fill me-1" style="font-size: 0.5rem; vertical-align: middle;"></i>${c.status}</span>
+                </div>
+                <h6 class="text-white mb-0 fw-medium">${c.title}</h6>
+            `;
+            
+            card.addEventListener('click', () => {
+                const lat = parseFloat(c.latitude);
+                const lng = parseFloat(c.longitude);
+                if (map && !isNaN(lat) && !isNaN(lng)) {
+                    map.setView([lat, lng], 15);
+                    if (c._marker) {
+                        c._marker.openPopup();
+                    }
+                }
+            });
 
-);
+            container.appendChild(card);
+        });
+    }
 
+    function applyFilters() {
+        const searchVal = document.getElementById('searchInput').value.toLowerCase();
+        const categoryVal = document.getElementById('categoryFilter').value;
+        const statusVal = document.getElementById('statusFilter').value;
 
+        filteredComplaints = rawComplaints.filter(c => {
+            const matchesSearch = c.title.toLowerCase().includes(searchVal);
+            const matchesCategory = categoryVal === '' || c.category === categoryVal;
+            const matchesStatus = statusVal === '' || c.status === statusVal;
+            return matchesSearch && matchesCategory && matchesStatus;
+        });
 
-{% endfor %}
-
-
+        renderMapMarkers();
+        renderComplaintsList();
+    }
 </script>
-
-
-</body>
-</html>
+{% endblock %}
