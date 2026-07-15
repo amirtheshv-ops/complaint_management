@@ -20,11 +20,11 @@ const AddComplaint = () => {
   const [longitude, setLongitude] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1); // step 1 = details, step 2 = location (mobile wizard)
 
   const navigate = useNavigate();
   const mapRef = useRef(null);
   const markerRef = useRef(null);
+  const mapContainerRef = useRef(null);
 
   useEffect(() => {
     if (!window.L) {
@@ -34,25 +34,43 @@ const AddComplaint = () => {
 
     const defaultLat = 12.9716;
     const defaultLng = 77.5946;
+    if (!mapContainerRef.current) return;
 
-    const map = window.L.map('complaint-map').setView([defaultLat, defaultLng], 12);
+    // Tracks whether this effect instance is still the active one. Guards
+    // against async geolocation callbacks firing after cleanup has already
+    // removed the map (e.g. React StrictMode's mount->cleanup->mount in dev,
+    // or the user navigating away before the permission prompt resolves).
+    let isActive = true;
+
+    const map = window.L.map(mapContainerRef.current);
     mapRef.current = map;
 
+    map.setView([defaultLat, defaultLng], 12);
+
+    setTimeout(() => {
+      if (isActive && mapRef.current === map) {
+        map.invalidateSize();
+      }
+    }, 100);
+
     window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
+      attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
+
+    const isMapLive = () => isActive && mapRef.current === map;
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         ({ coords }) => {
+          if (!isMapLive()) return; // map was torn down before this resolved
           const { latitude: lat, longitude: lng } = coords;
-          map.setView([lat, lng], 15);
+          map.setView([lat, lng], 15, { animate: false });
           setLatitude(lat.toFixed(6));
           setLongitude(lng.toFixed(6));
-          const marker = window.L.marker([lat, lng]).addTo(map);
-          markerRef.current = marker;
+          markerRef.current = window.L.marker([lat, lng]).addTo(map);
         },
         () => {
+          if (!isMapLive()) return;
           setLatitude(defaultLat.toFixed(6));
           setLongitude(defaultLng.toFixed(6));
           markerRef.current = window.L.marker([defaultLat, defaultLng]).addTo(map);
@@ -65,6 +83,7 @@ const AddComplaint = () => {
     }
 
     map.on('click', ({ latlng }) => {
+      if (!isMapLive()) return;
       const { lat, lng } = latlng;
       setLatitude(lat.toFixed(6));
       setLongitude(lng.toFixed(6));
@@ -76,7 +95,13 @@ const AddComplaint = () => {
     });
 
     return () => {
-      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+      isActive = false;
+      map.off();
+      map.remove();
+      if (mapRef.current === map) {
+        mapRef.current = null;
+      }
+      markerRef.current = null;
     };
   }, []);
 
@@ -281,11 +306,15 @@ const AddComplaint = () => {
               </p>
 
               <div
+                ref={mapContainerRef}
                 id="complaint-map"
                 className="map-container flex-grow-1 mb-3"
-                style={{ minHeight: 340, borderRadius: 14, overflow: 'hidden' }}
+                style={{
+                  minHeight: 340,
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                }}
               ></div>
-
               <div className="row g-2">
                 <div className="col-6">
                   <label className="form-label">LATITUDE</label>

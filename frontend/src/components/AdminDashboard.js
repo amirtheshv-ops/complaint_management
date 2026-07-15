@@ -153,7 +153,7 @@ const AdminDashboard = ({ currentUser }) => {
                   transition: 'width 0.8s cubic-bezier(0.22,1,0.36,1)',
                 }}
               />
-            </div>
+            </div> 
           </div>
         </div>
       )}
