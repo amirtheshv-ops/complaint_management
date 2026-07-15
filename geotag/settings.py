@@ -80,7 +80,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'geotag',
         'USER': 'root',
-        'PASSWORD': 'dell123',
+        'PASSWORD': 'kaaviya_shree_2507',
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -122,6 +122,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+
 
 # Media files (user uploaded files)
 MEDIA_URL = '/media/'
@@ -134,3 +136,20 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 
+<<<<<<< HEAD
+=======
+EMAIL_HOST = 'smtp.gmail.com'
+
+EMAIL_PORT = 587
+
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = 'yourgmail@gmail.com'
+
+EMAIL_HOST_PASSWORD = 'your_app_password'
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+]
+CORS_ALLOW_CREDENTIALS = True
+>>>>>>> kaaviya

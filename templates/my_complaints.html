@@ -1,65 +1,218 @@
-<!DOCTYPE html>
-<html>
+{% extends 'base.html' %}
+{% load static %}
 
-<head>
+{% block title %}My Complaints{% endblock %}
 
-<title>My Complaints</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-</head>
-
-
-<body>
-
-
-<div class="container mt-5">
-
-
-<h2>
-My Complaints
-</h2>
-
-
-
-<table class="table table-bordered">
-
-
-<tr>
-
-<th>ID</th>
-<th>Category</th>
-<th>Title</th>
-<th>Status</th>
-
-</tr>
-
-
-{% for c in complaints %}
-
-
-<tr>
-
-<td>{{c.id}}</td>
-
-<td>{{c.category}}</td>
-
-<td>{{c.title}}</td>
-
-<td>{{c.status}}</td>
-
-
-</tr>
-
-
-{% endfor %}
-
-
-</table>
-
-
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 text-between-layout d-flex align-items-center justify-content-between">
+        <div>
+            <h1 class="h2 text-white mb-1"><i class="bi bi-list-task me-2 text-indigo"></i>My Complaints</h1>
+            <p class="text-secondary mb-0">Review the status and details of all complaints you've submitted.</p>
+        </div>
+        <div>
+            <a href="{% url 'add_complaint' %}" class="btn btn-primary-custom">
+                <i class="bi bi-plus-circle me-1"></i> New Complaint
+            </a>
+        </div>
+    </div>
 </div>
 
+<div class="row">
+    <div class="col-12">
+        <div class="glass-card p-4">
+            {% if complaints %}
+            <div class="table-responsive">
+                <table class="table custom-table align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">ID</th>
+                            <th style="width: 180px;">Category</th>
+                            <th>Title</th>
+                            <th style="width: 150px;">Status</th>
+                            <th style="width: 150px;">Date Filed</th>
+                            <th style="width: 100px; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in complaints %}
+                        <tr id="row-{{ c.id }}">
+                            <td class="text-secondary fw-semibold">#{{ c.id }}</td>
+                            <td>
+                                <span class="badge bg-secondary bg-opacity-20 text-light px-2.5 py-1.5 rounded-3">
+                                    {% if c.category == 'Garbage' %}<i class="bi bi-trash-fill text-danger me-1"></i>{% endif %}
+                                    {% if c.category == 'Road Damage' %}<i class="bi bi-cone-striped text-warning me-1"></i>{% endif %}
+                                    {% if c.category == 'Water Leakage' %}<i class="bi bi-droplet-fill text-info me-1"></i>{% endif %}
+                                    {% if c.category == 'Street Light' %}<i class="bi bi-lightbulb-fill text-warning me-1"></i>{% endif %}
+                                    {% if c.category == 'Drainage' %}<i class="bi bi-water text-primary me-1"></i>{% endif %}
+                                    {% if c.category == 'Other' %}<i class="bi bi-patch-question-fill text-secondary me-1"></i>{% endif %}
+                                    {{ c.category }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="fw-medium text-white">{{ c.title }}</span>
+                            </td>
+                            <td>
+                                {% if c.status == 'Pending' %}
+                                <span class="badge-status badge-pending"><i class="bi bi-dot fs-5"></i>Pending</span>
+                                {% elif c.status == 'In Progress' %}
+                                <span class="badge-status badge-progress"><i class="bi bi-dot fs-5"></i>In Progress</span>
+                                {% else %}
+                                <span class="badge-status badge-resolved"><i class="bi bi-dot fs-5"></i>Resolved</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-secondary small">
+                                {{ c.created_at|date:"M d, Y" }}
+                            </td>
+                            <td style="text-align: center;">
+                                <button type="button" 
+                                        class="btn btn-outline-light btn-sm px-3 rounded-2"
+                                        onclick="showDetails({{ c.id }}, '{{ c.title|escapejs }}', '{{ c.category|escapejs }}', '{{ c.description|escapejs }}', '{{ c.status|escapejs }}', '{{ c.created_at|date:"M d, Y" }}', '{{ c.latitude }}', '{{ c.longitude }}', '{% if c.image %}{{ c.image.url }}{% endif %}')">
+                                    View
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="text-secondary mb-3"><i class="bi bi-journal-x display-2"></i></div>
+                <h5 class="text-white-50">No complaints logged yet.</h5>
+                <p class="text-secondary small">Submit a complaint when civic anomalies arise.</p>
+                <a href="{% url 'add_complaint' %}" class="btn btn-primary-custom btn-sm mt-3 px-4">
+                    Report an Issue
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
 
-</body>
-</html>
+<!-- Modal for Complaint Details -->
+<div class="modal fade" id="complaintModal" tabindex="-1" aria-labelledby="complaintModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 glass-card text-light" style="background: rgba(22, 30, 49, 0.95); backdrop-filter: blur(20px);">
+            <div class="modal-header border-bottom border-light border-opacity-10 py-3">
+                <h5 class="modal-title fw-bold" id="complaintModalLabel">Complaint Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <!-- Detail image -->
+                        <div class="mb-3">
+                            <span class="text-secondary small d-block mb-1">Uploaded Photo</span>
+                            <div class="rounded-3 overflow-hidden border border-light border-opacity-10 bg-dark d-flex align-items-center justify-content-center" style="height: 250px;">
+                                <img id="detailImg" src="" alt="Complaint Evidence" class="img-fluid w-100 h-100" style="object-fit: cover; display: none;">
+                                <div id="noImgText" class="text-secondary text-center">
+                                    <i class="bi bi-image display-4 mb-2 d-block"></i>
+                                    <span>No Image Uploaded</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <span class="text-secondary small d-block mb-1">Description</span>
+                            <p class="text-white bg-dark bg-opacity-30 p-3 rounded-3 border border-light border-opacity-10" id="detailDesc" style="white-space: pre-wrap; font-size: 0.95rem;"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <!-- Status and Details -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <span class="text-secondary small d-block mb-1">Category</span>
+                                <span class="badge bg-secondary bg-opacity-35 text-white px-2.5 py-1.5 rounded-3 fw-medium" id="detailCategory"></span>
+                            </div>
+                            <div class="col-6">
+                                <span class="text-secondary small d-block mb-1">Status</span>
+                                <div id="detailStatusBadge"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <span class="text-secondary small d-block mb-1">Date Submitted</span>
+                            <span class="text-white fw-medium" id="detailDate"></span>
+                        </div>
+
+                        <!-- Mini map coordinate preview -->
+                        <div>
+                            <span class="text-secondary small d-block mb-2">Geotagged Location</span>
+                            <div id="miniMap" class="rounded-3 border border-light border-opacity-10" style="height: 180px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top border-light border-opacity-10">
+                <button type="button" class="btn btn-secondary-custom" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let miniMap, miniMarker;
+    let modalInstance;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        modalInstance = new bootstrap.Modal(document.getElementById('complaintModal'));
+    });
+
+    function showDetails(id, title, category, description, status, date, lat, lng, imgUrl) {
+        document.getElementById('complaintModalLabel').innerText = `Complaint #${id}: ${title}`;
+        document.getElementById('detailCategory').innerText = category;
+        document.getElementById('detailDesc').innerText = description;
+        document.getElementById('detailDate').innerText = date;
+
+        // Image Handling
+        const imgEl = document.getElementById('detailImg');
+        const noImgEl = document.getElementById('noImgText');
+        if (imgUrl && imgUrl.trim() !== '') {
+            imgEl.src = imgUrl;
+            imgEl.style.display = 'block';
+            noImgEl.style.display = 'none';
+        } else {
+            imgEl.style.display = 'none';
+            noImgEl.style.display = 'block';
+        }
+
+        // Status Badge Handling
+        const badgeContainer = document.getElementById('detailStatusBadge');
+        if (status === 'Pending') {
+            badgeContainer.innerHTML = '<span class="badge-status badge-pending"><i class="bi bi-dot fs-5"></i>Pending</span>';
+        } else if (status === 'In Progress') {
+            badgeContainer.innerHTML = '<span class="badge-status badge-progress"><i class="bi bi-dot fs-5"></i>In Progress</span>';
+        } else {
+            badgeContainer.innerHTML = '<span class="badge-status badge-resolved"><i class="bi bi-dot fs-5"></i>Resolved</span>';
+        }
+
+        // Show Modal
+        modalInstance.show();
+
+        // Initialize or update Mini Map after modal is rendered
+        setTimeout(() => {
+            const latFloat = parseFloat(lat);
+            const lngFloat = parseFloat(lng);
+            
+            if (!miniMap) {
+                miniMap = L.map('miniMap', {
+                    zoomControl: false,
+                    attributionControl: false
+                }).setView([latFloat, lngFloat], 15);
+
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(miniMap);
+                miniMarker = L.marker([latFloat, lngFloat]).addTo(miniMap);
+            } else {
+                miniMap.setView([latFloat, lngFloat], 15);
+                miniMarker.setLatLng([latFloat, lngFloat]);
+                miniMap.invalidateSize();
+            }
+        }, 300);
+    }
+</script>
+{% endblock %}
