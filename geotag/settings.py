@@ -80,7 +80,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'geotag',
         'USER': 'root',
-        'PASSWORD': 'kaaviya_shree_2507',
+        'PASSWORD': 'Rupan@2006',
         'HOST': 'localhost',
         'PORT': '3306',
     }
